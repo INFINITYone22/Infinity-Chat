@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>INFINITYone22</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.1.1/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+        :root {
+            --black: #0A0A0A;
+            --dark-gray: #121212;
+            --mid-gray: #1A1A1A;
+            --light-gray: #e0e0e0;
+            --brand-purple: #3813C2;
+            --brand-pink: #FF6FD8;
+            --brand-cyan: #4ADEDE;
+            --brand-yellow: #FAF270;
+            --gradient-border: linear-gradient(45deg, var(--brand-pink), var(--brand-purple), var(--brand-cyan), var(--brand-yellow));
+            --font-family: 'Inter', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body,
+        html {
+            background: var(--black);
+            font-family: var(--font-family);
+            color: var(--light-gray);
+            overflow: hidden;
+        }
+
+        #app-container {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+            background: var(--dark-gray);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 3px solid transparent;
+            background-clip: padding-box;
+            position: relative;
+        }
+
+        #app-container::before {
+            content: '';
+            position: absolute;
+            top: 0; right: 0; bottom: 0; left: 0;
+            z-index: -1;
+            margin: -3px;
+            border-radius: inherit;
+            background: var(--gradient-border);
+        }
+
+        #history-panel {
+            width: 260px;
+            background: rgba(10, 10, 10, 0.8);
+            backdrop-filter: blur(10px);
+            border-right: 1px solid var(--mid-gray);
+            display: flex;
+            flex-direction: column;
+            padding: 20px 12px;
+            gap: 10px;
+            overflow-y: auto;
+        }
+        
+        #history-panel h2 {
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: var(--brand-pink);
+            padding-left: 8px;
+            user-select: none;
+        }
+
+        .history-item {
+            background: var(--mid-gray);
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            color: #90caf9;
+            user-select: none;
+            border-left: 3px solid transparent;
+        }
+
+        .history-item:hover, .history-item.active {
+            background: #252525;
+            border-left: 3px solid var(--brand-pink);
+        }
+
+        #chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--dark-gray);
+            position: relative;
+        }
+
+        #header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 24px;
+            -webkit-app-region: drag;
+        }
+        
+        #header-title {
+            font-size: 18px;
+            font-weight: 700;
+            background: var(--gradient-border);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            user-select: none;
+        }
+
+        #settings-btn {
+            background: transparent;
+            border: none;
+            color: var(--light-gray);
+            cursor: pointer;
+            font-size: 24px;
+            transition: color 0.3s ease;
+            -webkit-app-region: no-drag;
+        }
+
+        #settings-btn:hover {
+            color: var(--brand-pink);
+        }
+
+        /* Title bar controls */
+        .title-bar-controls {
+            -webkit-app-region: no-drag;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: auto;
+            margin-right: 12px;
+        }
+        .control-btn {
+            background: transparent;
+            border: none;
+            color: #888;
+            font-size: 14px;
+            cursor: pointer;
+            padding: 6px 8px;
+            border-radius: 6px;
+            transition: color 0.2s ease, background 0.2s ease;
+        }
+        .control-btn:hover { color: #fff; background: rgba(255,255,255,0.06); }
+
+        #messages-container {
+            flex-grow: 1;
+            padding: 24px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .message {
+            max-width: 75%;
+            padding: 14px 20px;
+            border-radius: 18px;
+            font-size: 16px;
+            line-height: 1.5;
+            animation: fadeInUp 0.4s ease-out forwards;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, #4263eb, #60a5fa);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.ai {
+            align-self: flex-start;
+            background: var(--mid-gray);
+            color: var(--light-gray);
+            border-bottom-left-radius: 4px;
+        }
+
+        #input-area {
+            display: flex;
+            padding: 16px 24px;
+            border-top: 1px solid var(--mid-gray);
+        }
+
+        #input-field {
+            flex-grow: 1;
+            padding: 14px 18px;
+            border-radius: 12px;
+            border: 1px solid #333;
+            background: var(--black);
+            color: white;
+            font-size: 16px;
+            outline: none;
+            transition: box-shadow 0.3s ease, border-color 0.3s ease;
+        }
+        
+        #input-field:disabled {
+            background-color: #1a1a1a;
+            cursor: not-allowed;
+        }
+
+        #input-field:focus {
+            border-color: var(--brand-purple);
+            box-shadow: 0 0 10px var(--brand-purple);
+        }
+
+        #send-btn {
+            margin-left: 12px;
+            background: var(--brand-purple);
+            border: none;
+            color: white;
+            font-weight: 600;
+            font-size: 16px;
+            padding: 0 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.3s ease, opacity 0.3s ease;
+        }
+
+        #send-btn:hover {
+            background: var(--brand-pink);
+        }
+        
+        #send-btn:disabled {
+            background: #555;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        #settings-modal {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(5px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            animation: fadeIn 0.3s ease;
+        }
+
+        #settings-content {
+            background: #1e1e2f;
+            border-radius: 16px;
+            padding: 28px 36px;
+            width: 400px;
+            border: 1px solid var(--brand-purple);
+            box-shadow: 0 0 30px rgba(56, 19, 194, 0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        #settings-content h3 {
+            margin: 0;
+            color: var(--brand-pink);
+            text-align: center;
+            font-size: 20px;
+        }
+
+        label {
+            font-weight: 600;
+            font-size: 14px;
+            color: #ccc;
+            display: block;
+            margin-bottom: 8px;
+        }
+        
+        select, input[type="text"] {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 1px solid #444;
+            background: var(--dark-gray);
+            color: white;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        select:focus, input[type="text"]:focus {
+             border-color: var(--brand-pink);
+             box-shadow: 0 0 8px var(--brand-pink);
+        }
+
+        #save-settings-btn {
+            background: linear-gradient(135deg, var(--brand-pink), var(--brand-purple));
+            border: none;
+            padding: 14px 0;
+            border-radius: 10px;
+            color: white;
+            font-weight: 700;
+            cursor: pointer;
+            transition: opacity 0.3s ease;
+            margin-top: 10px;
+        }
+        #save-settings-btn:hover {
+            opacity: 0.9;
+        }
+        
+        #settings-error-message {
+            color: #ff7b7b;
+            font-size: 14px;
+            text-align: center;
+            min-height: 20px;
+            margin-top: -10px;
+        }
+
+        /* Model selector (bottom-right tab + popup) */
+        #model-selector-tab {
+            position: absolute;
+            bottom: 80px;
+            right: 24px;
+            background-color: var(--mid-gray);
+            color: var(--light-gray);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s ease;
+            user-select: none;
+            border: 1px solid #444;
+        }
+        #model-selector-tab:hover { background-color: #333; }
+        #model-selection-popup {
+            position: absolute;
+            bottom: 125px;
+            right: 24px;
+            width: 350px;
+            max-height: 400px;
+            background-color: #1f1f1f;
+            border-radius: 12px;
+            border: 1px solid #555;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 100;
+        }
+        #model-search-input {
+            width: 100%;
+            padding: 14px;
+            background-color: #2a2a2a;
+            border: none;
+            border-bottom: 1px solid #444;
+            color: white;
+            outline: none;
+            font-size: 16px;
+        }
+        #model-list { overflow-y: auto; flex-grow: 1; }
+        .model-item { padding: 12px 16px; cursor: pointer; font-size: 14px; }
+        .model-item:hover, .model-item.selected { background-color: var(--brand-purple); color: white; }
+
+        /* New Chat button */
+        #new-chat-btn {
+            background: var(--brand-purple);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.3s ease;
+            margin-bottom: 10px;
+        }
+        #new-chat-btn:hover { background: var(--brand-pink); }
+
+        /* Highlighted code blocks inside AI messages */
+        .message.ai pre {
+            background: #0d1117;
+            padding: 14px;
+            border-radius: 8px;
+            border: 1px solid #30363d;
+            overflow-x: auto;
+        }
+        .message.ai code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; }
+        
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+    </head>
+    <body>
+    <div id="app-container">
+        <aside id="history-panel">
+            <h2>History</h2>
+            <button id="new-chat-btn">+ New Chat</button>
+            <div id="history-list"></div>
+        </aside>
+        <main id="chat-area">
+            <div id="header">
+                <div id="header-title">INFINITYone22</div>
+                <div class="title-bar-controls">
+                    <button id="fullscreen-btn" class="control-btn" title="Fullscreen">⛶</button>
+                    <button id="minimize-btn" class="control-btn" title="Minimize">-</button>
+                    <button id="maximize-btn" class="control-btn" title="Maximize">□</button>
+                    <button id="close-btn" class="control-btn" title="Close">×</button>
+                </div>
+                <button id="settings-btn" title="Settings">⚙️</button>
+            </div>
+            <div id="messages-container"></div>
+            <form id="input-area">
+                <input id="input-field" type="text" placeholder="Type your message..." autocomplete="off" />
+                <button id="send-btn" type="submit">Send</button>
+            </form>
+            <div id="model-selector-tab">Model: Not Set</div>
+            <div id="model-selection-popup">
+                <input id="model-search-input" type="text" placeholder="Search models..." />
+                <div id="model-list"></div>
+            </div>
+        </main>
+    </div>
+
+    <section id="settings-modal">
+        <div id="settings-content">
+            <h3>API Settings</h3>
+            <div>
+                <label for="api-provider">API Provider</label>
+                <select id="api-provider">
+                    <option value="gemini">Gemini</option>
+                    <option value="openai">OpenAI</option>
+                    <option value="openrouter">OpenRouter</option>
+                </select>
+            </div>
+            <div>
+                <label for="api-key">API Key</label>
+                <input id="api-key" type="text" placeholder="Enter your API key" />
+            </div>
+            <div id="settings-error-message"></div>
+            <button id="save-settings-btn">Save and Close</button>
+        </div>
+    </section>
+
+    <script>
+        // Configure marked with highlight.js
+        if (window.marked && window.hljs) {
+            marked.setOptions({
+                highlight: function(code, lang) {
+                    const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+                    return hljs.highlight(code, { language }).value;
+                },
+                langPrefix: 'hljs language-'
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const elements = {
+                messagesContainer: document.getElementById('messages-container'),
+                inputField: document.getElementById('input-field'),
+                sendBtn: document.getElementById('send-btn'),
+                inputForm: document.getElementById('input-area'),
+                settingsBtn: document.getElementById('settings-btn'),
+                settingsModal: document.getElementById('settings-modal'),
+                saveSettingsBtn: document.getElementById('save-settings-btn'),
+                apiKeyInput: document.getElementById('api-key'),
+                apiProviderSelect: document.getElementById('api-provider'),
+                historyList: document.getElementById('history-list'),
+                newChatBtn: document.getElementById('new-chat-btn'),
+                minimizeBtn: document.getElementById('minimize-btn'),
+                maximizeBtn: document.getElementById('maximize-btn'),
+                closeBtn: document.getElementById('close-btn'),
+                fullscreenBtn: document.getElementById('fullscreen-btn'),
+                modelSelectorTab: document.getElementById('model-selector-tab'),
+                modelPopup: document.getElementById('model-selection-popup'),
+                modelSearchInput: document.getElementById('model-search-input'),
+                modelList: document.getElementById('model-list'),
+                settingsError: document.getElementById('settings-error-message'),
+            };
+
+            let state = {
+                apiKey: '',
+                apiProvider: 'openai',
+                chatHistory: [],
+                currentChat: [],
+                selectedModel: '',
+                availableModels: [],
+                currentChatId: null,
+            };
+
+            const loadState = () => {
+                state.apiKey = localStorage.getItem('apiKey') || '';
+                state.apiProvider = localStorage.getItem('apiProvider') || 'openai';
+                state.chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
+                state.selectedModel = localStorage.getItem('selectedModel') || '';
+                
+                elements.apiKeyInput.value = state.apiKey;
+                elements.apiProviderSelect.value = state.apiProvider;
+                
+                renderHistoryList();
+                updateModelDisplay();
+            };
+
+            const saveState = () => {
+                localStorage.setItem('apiKey', state.apiKey);
+                localStorage.setItem('apiProvider', state.apiProvider);
+                localStorage.setItem('selectedModel', state.selectedModel);
+                localStorage.setItem('chatHistory', JSON.stringify(state.chatHistory));
+            };
+            
+            const updateModelDisplay = () => {
+                if (!elements.modelSelectorTab) return;
+                const current = state.availableModels.find(m => m.id === state.selectedModel);
+                const label = current ? (current.name || current.id) : (state.selectedModel || 'Not Set');
+                const short = label.length > 25 ? (label.substring(0,25) + '...') : label;
+                elements.modelSelectorTab.textContent = `Model: ${short}`;
+            };
+
+            const renderPopupModelList = (filter = '') => {
+                if (!elements.modelList) return;
+                elements.modelList.innerHTML = '';
+                const filtered = state.availableModels.filter(m => (m.name || m.id).toLowerCase().includes((filter || '').toLowerCase()));
+                
+                if (filtered.length === 0) {
+                    const empty = document.createElement('div');
+                    empty.className = 'model-item';
+                    empty.textContent = 'No models found';
+                    elements.modelList.appendChild(empty);
+                    return;
+                }
+                
+                filtered.forEach(model => {
+                    const item = document.createElement('div');
+                    item.className = 'model-item' + (model.id === state.selectedModel ? ' selected' : '');
+                    item.textContent = model.name || model.id;
+                    item.onclick = () => {
+                        state.selectedModel = model.id;
+                        renderPopupModelList(filter); // Re-render to update selection style
+                        updateModelDisplay();
+                        saveState();
+                        elements.modelPopup.style.display = 'none';
+                    };
+                    elements.modelList.appendChild(item);
+                });
+            };
+
+            const fetchAndPopulateModels = async () => {
+                const apiKey = elements.apiKeyInput.value.trim();
+                const apiProvider = elements.apiProviderSelect.value;
+
+                if (!apiKey) return;
+                elements.settingsError.textContent = 'Fetching models...';
+
+                const { models, error } = await window.electronAPI.fetchModels({ apiProvider, apiKey });
+                
+                if (error) {
+                    elements.settingsError.textContent = `Error: ${error}`;
+                    state.availableModels = [];
+                } else {
+                    elements.settingsError.textContent = '';
+                    state.availableModels = models || [];
+                    state.apiKey = apiKey;
+                    state.apiProvider = apiProvider;
+                    // If current model is not in the new list, select the first one
+                    if (!state.selectedModel || !state.availableModels.find(m => m.id === state.selectedModel)) {
+                        state.selectedModel = state.availableModels[0]?.id || '';
+                    }
+                }
+                
+                renderPopupModelList();
+                updateModelDisplay();
+                saveState();
+            };
+
+            elements.modelSelectorTab.addEventListener('click', () => {
+                const isOpen = elements.modelPopup.style.display === 'flex';
+                elements.modelPopup.style.display = isOpen ? 'none' : 'flex';
+                if (!isOpen) {
+                    elements.modelSearchInput.value = '';
+                    renderPopupModelList('');
+                    elements.modelSearchInput.focus();
+                }
+            });
+            
+            elements.modelSearchInput.addEventListener('input', (e) => renderPopupModelList(e.target.value));
+
+            const renderHistoryList = () => {
+                elements.historyList.innerHTML = '';
+                const sorted = [...state.chatHistory].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                sorted.forEach(chat => {
+                    const item = document.createElement('div');
+                    item.className = 'history-item';
+                    if(state.currentChatId === chat.id) item.classList.add('active');
+                    item.textContent = chat.title || 'Untitled Chat';
+                    item.onclick = () => {
+                        state.currentChatId = chat.id;
+                        state.currentChat = chat.messages || [];
+                        renderMessages();
+                        renderHistoryList(); // Re-render to update active state
+                    };
+                    elements.historyList.appendChild(item);
+                });
+            };
+
+            const renderMessages = () => {
+                elements.messagesContainer.innerHTML = '';
+                state.currentChat.forEach(msg => addMessageToDOM(msg.role, msg.content));
+            };
+
+            const addMessageToDOM = (role, content) => {
+                const msgDiv = document.createElement('div');
+                msgDiv.className = `message ${role}`;
+                if (role === 'ai' && window.marked) {
+                    msgDiv.innerHTML = marked.parse(content);
+                } else {
+                    msgDiv.textContent = content;
+                }
+                elements.messagesContainer.appendChild(msgDiv);
+                elements.messagesContainer.scrollTop = elements.messagesContainer.scrollHeight;
+            };
+            
+            const createNewChat = () => {
+                state.currentChatId = `chat_${Date.now()}`;
+                state.currentChat = [];
+                renderMessages();
+                renderHistoryList();
+                elements.inputField.focus();
+            };
+
+            const saveCurrentChat = () => {
+                if (!state.currentChatId || state.currentChat.length === 0) return;
+                const chatData = {
+                    id: state.currentChatId,
+                    title: state.currentChat[0]?.content?.substring(0, 40) || 'Untitled Chat',
+                    messages: state.currentChat,
+                    timestamp: Date.now(),
+                };
+                const idx = state.chatHistory.findIndex(c => c.id === state.currentChatId);
+                if (idx >= 0) state.chatHistory[idx] = chatData; else state.chatHistory.push(chatData);
+                saveState();
+                renderHistoryList();
+            };
+
+            const handleSendMessage = async (e) => {
+                e.preventDefault();
+                const prompt = elements.inputField.value.trim();
+                if (!prompt) return;
+
+                if (!state.apiKey || !state.selectedModel) {
+                    addMessageToDOM('ai', 'Please set your API key and select a model in the settings first.');
+                    return;
+                }
+
+                elements.inputField.value = '';
+                elements.inputField.disabled = true;
+                elements.sendBtn.disabled = true;
+                
+                state.currentChat.push({ role: 'user', content: prompt });
+                addMessageToDOM('user', prompt);
+
+                const aiThinkingMessage = { role: 'ai', content: '...' };
+                state.currentChat.push(aiThinkingMessage);
+                addMessageToDOM('ai', '...');
+                const thinkingBubble = elements.messagesContainer.lastElementChild;
+
+                try {
+                    const response = await window.electronAPI.callAPI({
+                        apiProvider: state.apiProvider,
+                        apiKey: state.apiKey,
+                        prompt: prompt,
+                        model: state.selectedModel
+                    });
+
+                    if (response.error) {
+                        thinkingBubble.textContent = `Error: ${response.error}`;
+                        thinkingBubble.style.color = '#ff7b7b';
+                    } else {
+                        aiThinkingMessage.content = response.result;
+                        thinkingBubble.innerHTML = window.marked ? marked.parse(response.result) : response.result;
+                        saveCurrentChat();
+                    }
+                } catch (err) {
+                    thinkingBubble.textContent = `Error: ${err.message}`;
+                } finally {
+                    elements.inputField.disabled = false;
+                    elements.sendBtn.disabled = false;
+                    elements.inputField.focus();
+                }
+            };
+            
+            elements.inputForm.addEventListener('submit', handleSendMessage);
+
+            elements.settingsBtn.onclick = () => {
+              elements.settingsError.textContent = '';
+              elements.settingsModal.style.display = 'flex'
+            };
+            elements.settingsModal.onclick = (e) => {
+                if (e.target === elements.settingsModal) {
+                    elements.settingsModal.style.display = 'none';
+                }
+            };
+
+            elements.saveSettingsBtn.onclick = () => {
+                elements.settingsModal.style.display = 'none';
+                fetchAndPopulateModels();
+            };
+
+            // New chat and window control listeners
+            elements.newChatBtn.addEventListener('click', createNewChat);
+            elements.minimizeBtn.addEventListener('click', () => window.electronAPI.minimize());
+            elements.maximizeBtn.addEventListener('click', () => window.electronAPI.maximize());
+            elements.closeBtn.addEventListener('click', () => window.electronAPI.close());
+            elements.fullscreenBtn.addEventListener('click', () => window.electronAPI.toggleFullscreen());
+
+            // Initial Load
+            loadState();
+            if (state.apiKey) { fetchAndPopulateModels(); }
+            if (!state.currentChatId) createNewChat();
+        });
+    </script>
+    </body>
+    </html>
+

@@ -1,0 +1,42 @@
+{
+  "name": "infinity-one22",
+  "version": "1.0.0",
+  "description": "A beautiful and polished AI chat interface",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "keywords": [
+    "AI",
+    "Chat",
+    "Electron",
+    "OpenAI",
+    "Gemini"
+  ],
+  "author": "Your Name",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^28.2.1",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.example.infinityone22",
+    "productName": "INFINITYone22",
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html"
+    ],
+    "mac": {
+      "target": "dmg"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  }
+}
+
