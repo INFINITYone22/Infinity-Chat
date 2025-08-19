@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>INFINITYone22</title>
+    <title>Infinity Chat - AI Desktop Interface</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.1.1/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
@@ -164,6 +164,7 @@
             display: flex;
             flex-direction: column;
             gap: 16px;
+            scroll-behavior: smooth;
         }
 
         .message {
@@ -386,6 +387,8 @@
             border-radius: 8px;
             border: 1px solid #30363d;
             overflow-x: auto;
+            position: relative;
+            margin: 10px 0;
         }
         .message.ai code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; }
         
@@ -403,23 +406,23 @@
     <div id="app-container">
         <aside id="history-panel">
             <h2>History</h2>
-            <button id="new-chat-btn">+ New Chat</button>
+            <button id="new-chat-btn" title="New Chat (Ctrl+N)">+ New Chat</button>
             <div id="history-list"></div>
         </aside>
         <main id="chat-area">
             <div id="header">
-                <div id="header-title">INFINITYone22</div>
+                <div id="header-title">Infinity Chat</div>
                 <div class="title-bar-controls">
                     <button id="fullscreen-btn" class="control-btn" title="Fullscreen">⛶</button>
                     <button id="minimize-btn" class="control-btn" title="Minimize">-</button>
                     <button id="maximize-btn" class="control-btn" title="Maximize">□</button>
                     <button id="close-btn" class="control-btn" title="Close">×</button>
                 </div>
-                <button id="settings-btn" title="Settings">⚙️</button>
+                <button id="settings-btn" title="Settings (Ctrl+,)">⚙️</button>
             </div>
             <div id="messages-container"></div>
             <form id="input-area">
-                <input id="input-field" type="text" placeholder="Type your message..." autocomplete="off" />
+                <input id="input-field" type="text" placeholder="Type your message... (Enter to send)" autocomplete="off" aria-label="Message input" />
                 <button id="send-btn" type="submit">Send</button>
             </form>
             <div id="model-selector-tab">Model: Not Set</div>
@@ -488,7 +491,7 @@
 
             let state = {
                 apiKey: '',
-                apiProvider: 'openai',
+                apiProvider: 'gemini',  // Default to Gemini as it's free tier friendly
                 chatHistory: [],
                 currentChat: [],
                 selectedModel: '',
@@ -498,9 +501,18 @@
 
             const loadState = () => {
                 state.apiKey = localStorage.getItem('apiKey') || '';
-                state.apiProvider = localStorage.getItem('apiProvider') || 'openai';
+                state.apiProvider = localStorage.getItem('apiProvider') || 'gemini';
                 state.chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
                 state.selectedModel = localStorage.getItem('selectedModel') || '';
+                
+                // Set default models if none selected
+                if (!state.selectedModel) {
+                    switch(state.apiProvider) {
+                        case 'openai': state.selectedModel = 'gpt-4o-mini'; break;
+                        case 'gemini': state.selectedModel = 'models/gemini-1.5-flash-latest'; break;
+                        case 'openrouter': state.selectedModel = 'google/gemini-flash-1.5'; break;
+                    }
+                }
                 
                 elements.apiKeyInput.value = state.apiKey;
                 elements.apiProviderSelect.value = state.apiProvider;
@@ -556,23 +568,42 @@
                 const apiKey = elements.apiKeyInput.value.trim();
                 const apiProvider = elements.apiProviderSelect.value;
 
-                if (!apiKey) return;
+                if (!apiKey) {
+                    elements.settingsError.textContent = 'API key is required';
+                    return;
+                }
                 elements.settingsError.textContent = 'Fetching models...';
 
-                const { models, error } = await window.electronAPI.fetchModels({ apiProvider, apiKey });
-                
-                if (error) {
-                    elements.settingsError.textContent = `Error: ${error}`;
-                    state.availableModels = [];
-                } else {
-                    elements.settingsError.textContent = '';
-                    state.availableModels = models || [];
+                try {
+                    const { models, error } = await window.electronAPI.fetchModels({ apiProvider, apiKey });
+                    
+                    if (error) {
+                        elements.settingsError.textContent = `Error: ${error}`;
+                        state.availableModels = [];
+                        // Use default models as fallback
+                        const defaultModels = {
+                            'openai': [{id: 'gpt-4o-mini', name: 'GPT-4 Optimized Mini'}, {id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo'}],
+                            'gemini': [{id: 'models/gemini-1.5-flash-latest', name: 'Gemini 1.5 Flash'}, {id: 'models/gemini-1.5-pro-latest', name: 'Gemini 1.5 Pro'}],
+                            'openrouter': [{id: 'google/gemini-flash-1.5', name: 'Gemini Flash 1.5'}, {id: 'anthropic/claude-3-haiku', name: 'Claude 3 Haiku'}]
+                        };
+                        state.availableModels = defaultModels[apiProvider] || [];
+                        elements.settingsError.textContent += ' - Using default models';
+                    } else {
+                        elements.settingsError.textContent = `Found ${models.length} models`;
+                        state.availableModels = models || [];
+                        setTimeout(() => elements.settingsError.textContent = '', 2000);
+                    }
+                    
                     state.apiKey = apiKey;
                     state.apiProvider = apiProvider;
+                    
                     // If current model is not in the new list, select the first one
                     if (!state.selectedModel || !state.availableModels.find(m => m.id === state.selectedModel)) {
                         state.selectedModel = state.availableModels[0]?.id || '';
                     }
+                } catch(err) {
+                    elements.settingsError.textContent = `Error: ${err.message}`;
+                    state.availableModels = [];
                 }
                 
                 renderPopupModelList();
@@ -620,11 +651,30 @@
                 msgDiv.className = `message ${role}`;
                 if (role === 'ai' && window.marked) {
                     msgDiv.innerHTML = marked.parse(content);
+                    // Add copy buttons to code blocks
+                    msgDiv.querySelectorAll('pre code').forEach(block => {
+                        const wrapper = document.createElement('div');
+                        wrapper.style.position = 'relative';
+                        const copyBtn = document.createElement('button');
+                        copyBtn.textContent = 'Copy';
+                        copyBtn.style.cssText = 'position:absolute;top:5px;right:5px;padding:5px 10px;background:#3813C2;color:white;border:none;border-radius:5px;cursor:pointer;font-size:12px;';
+                        copyBtn.onclick = () => {
+                            navigator.clipboard.writeText(block.textContent);
+                            copyBtn.textContent = 'Copied!';
+                            setTimeout(() => copyBtn.textContent = 'Copy', 2000);
+                        };
+                        block.parentNode.insertBefore(wrapper, block);
+                        wrapper.appendChild(block);
+                        wrapper.appendChild(copyBtn);
+                    });
                 } else {
                     msgDiv.textContent = content;
                 }
                 elements.messagesContainer.appendChild(msgDiv);
-                elements.messagesContainer.scrollTop = elements.messagesContainer.scrollHeight;
+                // Smooth scroll to bottom
+                setTimeout(() => {
+                    elements.messagesContainer.scrollTop = elements.messagesContainer.scrollHeight;
+                }, 100);
             };
             
             const createNewChat = () => {
@@ -654,8 +704,13 @@
                 const prompt = elements.inputField.value.trim();
                 if (!prompt) return;
 
-                if (!state.apiKey || !state.selectedModel) {
-                    addMessageToDOM('ai', 'Please set your API key and select a model in the settings first.');
+                if (!state.apiKey) {
+                    addMessageToDOM('ai', '⚠️ Please set your API key in the settings (⚙️) first.\n\nYou can get free API keys from:\n- **Google Gemini**: https://makersuite.google.com/app/apikey\n- **OpenAI**: https://platform.openai.com/api-keys\n- **OpenRouter**: https://openrouter.ai/keys');
+                    return;
+                }
+                
+                if (!state.selectedModel) {
+                    addMessageToDOM('ai', '⚠️ Please select a model from the model selector at the bottom right.');
                     return;
                 }
 
@@ -680,8 +735,10 @@
                     });
 
                     if (response.error) {
-                        thinkingBubble.textContent = `Error: ${response.error}`;
+                        const errorMsg = `⚠️ Error: ${response.error}\n\nTroubleshooting tips:\n- Check if your API key is valid\n- Verify you have selected the correct provider\n- Ensure the model is available for your account\n- Check your internet connection`;
+                        thinkingBubble.innerHTML = window.marked ? marked.parse(errorMsg) : errorMsg;
                         thinkingBubble.style.color = '#ff7b7b';
+                        aiThinkingMessage.content = errorMsg;
                     } else {
                         aiThinkingMessage.content = response.result;
                         thinkingBubble.innerHTML = window.marked ? marked.parse(response.result) : response.result;
@@ -697,6 +754,33 @@
             };
             
             elements.inputForm.addEventListener('submit', handleSendMessage);
+            
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                // Ctrl/Cmd + Enter to send message
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && document.activeElement === elements.inputField) {
+                    handleSendMessage(e);
+                }
+                // Ctrl/Cmd + N for new chat
+                if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+                    e.preventDefault();
+                    createNewChat();
+                }
+                // Ctrl/Cmd + , for settings
+                if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+                    e.preventDefault();
+                    elements.settingsModal.style.display = 'flex';
+                }
+                // Escape to close modals
+                if (e.key === 'Escape') {
+                    if (elements.settingsModal.style.display === 'flex') {
+                        elements.settingsModal.style.display = 'none';
+                    }
+                    if (elements.modelPopup.style.display === 'flex') {
+                        elements.modelPopup.style.display = 'none';
+                    }
+                }
+            });
 
             elements.settingsBtn.onclick = () => {
               elements.settingsError.textContent = '';

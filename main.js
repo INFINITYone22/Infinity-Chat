@@ -3,8 +3,8 @@ const path = require('path');
 // NOTE: 'node-fetch' is no longer needed as global fetch is available.
 
 // App metadata for OpenRouter best practices
-const APP_URL = 'https://github.com/your-repo/infinityone22';
-const APP_TITLE = 'INFINITYone22';
+const APP_URL = 'https://github.com/infinity-chat/desktop';
+const APP_TITLE = 'Infinity Chat';
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -52,13 +52,17 @@ function createWindow() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
             body: JSON.stringify({
-              model: model || 'gpt-4o-mini',
+              model: model || 'gpt-3.5-turbo',  // More accessible default
               messages: [{ role: 'user', content: prompt }],
+              max_tokens: 2048,
+              temperature: 0.7,
             }),
           });
           data = await response.json();
-          if (data.error) throw new Error(data.error.message || 'OpenAI API error');
-          return { result: data.choices?.[0]?.message?.content ?? JSON.stringify(data) };
+          if (!response.ok || data.error) {
+            throw new Error(data.error?.message || `OpenAI API error: ${response.status}`);
+          }
+          return { result: data.choices?.[0]?.message?.content || 'No response generated' };
 
         case 'openrouter':
           response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -70,21 +74,35 @@ function createWindow() {
               'X-Title': APP_TITLE,
             },
             body: JSON.stringify({
-              model: model || 'google/gemini-pro',
+              model: model || 'google/gemini-flash-1.5',  // Better default for OpenRouter
               messages: [{ role: 'user', content: prompt }],
+              max_tokens: 2048,
+              temperature: 0.7,
             }),
           });
           data = await response.json();
-          if (data.error) throw new Error(data.error.message || 'OpenRouter API error');
-          return { result: data.choices?.[0]?.message?.content ?? JSON.stringify(data) };
+          if (!response.ok || data.error) {
+            throw new Error(data.error?.message || `OpenRouter API error: ${response.status}`);
+          }
+          return { result: data.choices?.[0]?.message?.content || 'No response generated' };
 
         case 'gemini': {
-          const geminiModel = model && model.trim() ? model : 'models/gemini-1.5-flash-latest';
+          // Ensure model has proper format (should start with 'models/')
+          let geminiModel = model && model.trim() ? model : 'gemini-1.5-flash-latest';
+          if (!geminiModel.startsWith('models/')) {
+            geminiModel = `models/${geminiModel}`;
+          }
           const url = `https://generativelanguage.googleapis.com/v1beta/${geminiModel}:generateContent?key=${apiKey}`;
           response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+            body: JSON.stringify({ 
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: {
+                temperature: 0.7,
+                maxOutputTokens: 2048,
+              }
+            }),
           });
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
@@ -140,8 +158,12 @@ function createWindow() {
           url = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
           headers = {};
           processFunc = (data) => (data.models || [])
-            .map(m => ({ id: m.name, name: m.displayName || m.name }))
-            .filter(m => typeof m.id === 'string' && m.id.includes('models/gemini'));
+            .filter(m => m.name && m.name.includes('gemini') && 
+                    m.supportedGenerationMethods?.includes('generateContent'))
+            .map(m => ({ 
+              id: m.name, 
+              name: m.displayName || m.name.replace('models/', '') 
+            }));
           break;
         default:
           return { error: 'Invalid provider for fetching models.' };
